@@ -28,7 +28,7 @@ def log_activity(user_id, action, details=None):
     conn.commit()
     conn.close()
 
-    st.set_page_config(page_title="RetailIQ", page_icon="🛒", layout="wide")
+st.set_page_config(page_title="RetailIQ", page_icon="🛒", layout="wide")
 
 if "user" not in st.session_state:
     st.session_state.user = None
@@ -54,7 +54,8 @@ if st.session_state.user is None:
                     st.error("Invalid PIN. Please try again.")
             else:
                 st.warning("Please enter your PIN.")
- else:
+
+else:
     user = st.session_state.user
     
     st.sidebar.title(f"Welcome, {user['full_name']}")
@@ -94,4 +95,4 @@ if st.session_state.user is None:
     elif menu == "Staff Activity Log":
         st.info("Activity Log coming soon")
     elif menu == "Void Sales":
-        st.info("Void Sales coming soon")               
+        st.info("Void Sales coming soon")
