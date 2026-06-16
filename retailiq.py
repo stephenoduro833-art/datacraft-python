@@ -3,12 +3,16 @@ import mysql.connector
 from datetime import datetime
 
 def get_connection():
-    return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="datacraft",
-        database="retailiq"
-    )
+    try:
+        return mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="datacraft",
+            database="retailiq"
+        )
+    except mysql.connector.Error:
+        st.error("Database connection unavailable. Please contact your administrator.")
+        st.stop()
 
 def login(pin):
     conn = get_connection()
