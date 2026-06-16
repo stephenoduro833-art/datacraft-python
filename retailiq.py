@@ -1,5 +1,6 @@
 import streamlit as st
 import mysql.connector
+import pandas as pd
 from datetime import datetime
 
 def get_connection():
@@ -31,6 +32,52 @@ def log_activity(user_id, action, details=None):
     )
     conn.commit()
     conn.close()
+
+def get_products():
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT p.product_id, p.product_name, p.category, p.selling_price, i.quantity 
+        FROM products p 
+        JOIN inventory i ON p.product_id = i.product_id 
+        WHERE p.is_active = TRUE AND i.quantity > 0
+    """)
+    products = cursor.fetchall()
+    conn.close()
+    return products
+
+def save_sale(cashier_id, cart, payment_method):
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    total = sum(item['subtotal'] for item in cart)
+    now = datetime.now()
+    
+    cursor.execute("""
+        INSERT INTO sales (cashier_id, sale_date, sale_time, payment_method, total_amount)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (cashier_id, now.date(), now.time(), payment_method, total))
+    
+    sale_id = cursor.lastrowid
+    
+    for item in cart:
+        cursor.execute("""
+            INSERT INTO sale_items (sale_id, product_id, quantity, unit_price, subtotal)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (sale_id, item['product_id'], item['quantity'], item['unit_price'], item['subtotal']))
+        
+        cursor.execute("""
+            UPDATE inventory SET quantity = quantity - %s WHERE product_id = %s
+        """, (item['quantity'], item['product_id']))
+        
+        cursor.execute("""
+            INSERT INTO stock_movements (product_id, movement_type, quantity, reason, recorded_by)
+            VALUES (%s, 'sale', %s, %s, %s)
+        """, (item['product_id'], item['quantity'], f"Sale ID {sale_id}", cashier_id))
+    
+    conn.commit()
+    conn.close()
+    return sale_id
 
 st.set_page_config(page_title="RetailIQ", page_icon="🛒", layout="wide")
 
@@ -89,7 +136,58 @@ else:
     st.divider()
     
     if menu == "POS - New Sale":
-        st.info("POS coming soon")
+        if "cart" not in st.session_state:
+            st.session_state.cart = []
+
+        products = get_products()
+        product_names = [p['product_name'] for p in products]
+        product_map = {p['product_name']: p for p in products}
+
+        col1, col2 = st.columns([1, 1])
+
+        with col1:
+            st.subheader("Add Item")
+            selected = st.selectbox("Select Product", product_names)
+            product = product_map[selected]
+            st.write(f"Price: GHS {product['selling_price']} | Stock: {product['quantity']}")
+            qty = st.number_input("Quantity", min_value=1, max_value=product['quantity'], value=1)
+
+            if st.button("Add to Cart"):
+                existing = next((i for i in st.session_state.cart if i['product_id'] == product['product_id']), None)
+                if existing:
+                    existing['quantity'] += qty
+                    existing['subtotal'] = existing['quantity'] * existing['unit_price']
+                else:
+                    st.session_state.cart.append({
+                        "product_id": product['product_id'],
+                        "product_name": product['product_name'],
+                        "quantity": qty,
+                        "unit_price": product['selling_price'],
+                        "subtotal": qty * product['selling_price']
+                    })
+                st.success(f"Added {qty} x {selected}")
+
+        with col2:
+            st.subheader("Cart")
+            if st.session_state.cart:
+                cart_df = pd.DataFrame(st.session_state.cart)[['product_name', 'quantity', 'unit_price', 'subtotal']]
+                cart_df.columns = ['Product', 'Qty', 'Unit Price', 'Subtotal']
+                st.dataframe(cart_df, use_container_width=True)
+                total = sum(i['subtotal'] for i in st.session_state.cart)
+                st.metric("Total", f"GHS {total:,.2f}")
+                payment = st.selectbox("Payment Method", ["cash", "momo", "card"])
+                if st.button("Confirm Sale"):
+                    sale_id = save_sale(user['user_id'], st.session_state.cart, payment)
+                    log_activity(user['user_id'], "SALE", f"Sale ID {sale_id} - GHS {total}")
+                    st.session_state.cart = []
+                    st.success(f"Sale #{sale_id} confirmed successfully")
+                    st.rerun()
+                if st.button("Clear Cart"):
+                    st.session_state.cart = []
+                    st.rerun()
+            else:
+                st.info("Cart is empty. Add products to get started.")
+
     elif menu == "Sales Dashboard":
         st.info("Sales Dashboard coming soon")
     elif menu == "Stock Management":
