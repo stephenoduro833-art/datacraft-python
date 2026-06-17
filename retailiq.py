@@ -74,6 +74,30 @@ def save_sale(cashier_id, cart, payment_method):
 
 st.set_page_config(page_title="RetailIQ", page_icon="🛒", layout="wide")
 
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: #f4f4f4;
+    }
+    section[data-testid="stSidebar"] {
+        background-color: #1a1a2e;
+    }
+    section[data-testid="stSidebar"] * {
+        color: white !important;
+    }
+    section[data-testid="stSidebar"] .stButton button {
+        background-color: white;
+        color: #1a1a2e !important;
+        border: none;
+    }
+    .stMetric {
+        background-color: white;
+        padding: 10px;
+        border-radius: 8px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 if "user" not in st.session_state:
     st.session_state.user = None
 
@@ -123,7 +147,6 @@ else:
     st.title(f"🛒 RetailIQ — {menu}")
     st.divider()
 
-    # ─── POS ───
     if menu == "POS - New Sale":
         if "cart" not in st.session_state:
             st.session_state.cart = []
@@ -172,7 +195,6 @@ else:
             else:
                 st.info("Cart is empty. Add products to get started.")
 
-    # ─── SALES DASHBOARD ───
     elif menu == "Sales Dashboard":
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
@@ -185,36 +207,29 @@ else:
         """)
         sales = cursor.fetchall()
         conn.close()
-
         df = pd.DataFrame(sales)
         active_sales = df[df['is_voided'] == 0]
-
         total_revenue = active_sales['total_amount'].sum()
         total_transactions = len(active_sales)
         avg_transaction = active_sales['total_amount'].mean() if total_transactions > 0 else 0
-
         col1, col2, col3 = st.columns(3)
         col1.metric("Total Revenue", f"GHS {total_revenue:,.2f}")
         col2.metric("Total Transactions", total_transactions)
         col3.metric("Avg Transaction", f"GHS {avg_transaction:,.2f}")
-
         st.divider()
         st.subheader("Sales by Cashier")
         cashier_sales = active_sales.groupby('cashier')['total_amount'].sum().reset_index()
         cashier_sales.columns = ['Cashier', 'Total Sales']
         st.dataframe(cashier_sales, use_container_width=True)
-
         st.divider()
         st.subheader("Sales by Payment Method")
         payment_sales = active_sales.groupby('payment_method')['total_amount'].sum().reset_index()
         payment_sales.columns = ['Payment Method', 'Total']
         st.dataframe(payment_sales, use_container_width=True)
-
         st.divider()
         st.subheader("All Transactions")
         st.dataframe(df, use_container_width=True)
 
-    # ─── STOCK MANAGEMENT ───
     elif menu == "Stock Management":
         st.subheader("Record New Stock")
         conn = get_connection()
@@ -227,16 +242,13 @@ else:
         """)
         all_products = cursor.fetchall()
         conn.close()
-
         product_names = [p['product_name'] for p in all_products]
         product_map = {p['product_name']: p for p in all_products}
-
         selected = st.selectbox("Select Product", product_names)
         product = product_map[selected]
         st.write(f"Current Stock: {product['quantity']}")
         qty_in = st.number_input("Quantity Received", min_value=1, value=1)
         reason = st.text_input("Supplier / Notes", placeholder="e.g. Delivered by ABC Suppliers")
-
         if st.button("Record Stock In"):
             conn = get_connection()
             cursor = conn.cursor()
@@ -254,7 +266,6 @@ else:
             st.success(f"Stock updated. {selected} now has {product['quantity'] + qty_in} units.")
             st.rerun()
 
-    # ─── INVENTORY ───
     elif menu == "Inventory":
         st.subheader("Current Inventory")
         conn = get_connection()
@@ -270,18 +281,14 @@ else:
         """)
         inventory = cursor.fetchall()
         conn.close()
-
         df = pd.DataFrame(inventory)
         total_products = len(df)
         low_stock = len(df[df['status'] == 'Low Stock'])
-
         col1, col2 = st.columns(2)
         col1.metric("Total Products", total_products)
         col2.metric("Low Stock Alerts", low_stock)
-
         st.divider()
         st.dataframe(df, use_container_width=True)
-
         st.divider()
         st.subheader("Stock Movement History")
         conn = get_connection()
@@ -300,7 +307,6 @@ else:
         movements_df = pd.DataFrame(movements)
         st.dataframe(movements_df, use_container_width=True)
 
-    # ─── STAFF ACTIVITY LOG ───
     elif menu == "Staff Activity Log":
         st.subheader("Staff Activity Log")
         conn = get_connection()
@@ -317,7 +323,6 @@ else:
         df = pd.DataFrame(logs)
         st.dataframe(df, use_container_width=True)
 
-    # ─── VOID SALES ───
     elif menu == "Void Sales":
         st.subheader("Void a Sale")
         conn = get_connection()
@@ -332,15 +337,12 @@ else:
         """)
         active_sales = cursor.fetchall()
         conn.close()
-
         if active_sales:
             df = pd.DataFrame(active_sales)
             st.dataframe(df, use_container_width=True)
-
             sale_ids = [s['sale_id'] for s in active_sales]
             selected_id = st.selectbox("Select Sale ID to Void", sale_ids)
             void_reason = st.text_input("Reason for Void", placeholder="e.g. Customer returned items")
-
             if st.button("Void Sale"):
                 if void_reason:
                     conn = get_connection()
