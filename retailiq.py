@@ -74,30 +74,6 @@ def save_sale(cashier_id, cart, payment_method):
 
 st.set_page_config(page_title="RetailIQ", page_icon="🛒", layout="wide")
 
-st.markdown("""
-    <style>
-    .stApp {
-        background-color: #f4f4f4;
-    }
-    section[data-testid="stSidebar"] {
-        background-color: #1a1a2e;
-    }
-    section[data-testid="stSidebar"] * {
-        color: white !important;
-    }
-    section[data-testid="stSidebar"] .stButton button {
-        background-color: white;
-        color: #1a1a2e !important;
-        border: none;
-    }
-    .stMetric {
-        background-color: white;
-        padding: 10px;
-        border-radius: 8px;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
 if "user" not in st.session_state:
     st.session_state.user = None
 
