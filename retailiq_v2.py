@@ -144,13 +144,77 @@ def get_expenses_data():
 
 
 st.set_page_config(page_title="RetailIQ", page_icon="🛒", layout="wide")
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: #F5F7FA;
+    }
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        max-width: 1200px;
+    }
+    section[data-testid="stSidebar"] {
+        background-color: #0E2A47;
+    }
+    section[data-testid="stSidebar"] * {
+        color: #F5F7FA !important;
+    }
+    section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
+        background-color: #1B4F8C !important;
+        color: #F5F7FA !important;
+        border-color: #2EC4DE !important;
+    }
+    section[data-testid="stSidebar"] div[data-baseweb="select"] span {
+        color: #F5F7FA !important;
+    }
+    section[data-testid="stSidebar"] div[data-baseweb="select"] svg {
+        fill: #F5F7FA !important;
+    }
+    ul[data-baseweb="menu"] {
+        background-color: #1B4F8C !important;
+    }
+    ul[data-baseweb="menu"] li {
+        color: #F5F7FA !important;
+    }
+    section[data-testid="stSidebar"] .stButton button {
+        background-color: #2EC4DE;
+        color: #0E2A47 !important;
+        border: none;
+        font-weight: 600;
+    }
+    h1, h2, h3 {
+        color: #0E2A47;
+    }
+    div[data-testid="stMetric"] {
+        background-color: white;
+        border-top: 3px solid #2EC4DE;
+        padding: 12px 16px;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(14,42,71,0.08);
+    }
+    .stButton button {
+        background-color: #1B4F8C;
+        color: white;
+        border-radius: 4px;
+        border: none;
+    }
+    .stButton button:hover {
+        background-color: #2EC4DE;
+        color: #0E2A47;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 if "user" not in st.session_state:
     st.session_state.user = None
 
 if st.session_state.user is None:
-    st.title("🛒 RetailIQ")
-    st.subheader("by Datacraft")
+    col_a, col_b, col_c = st.columns([1.5, 1, 1.5])
+    with col_b:
+        st.image("assets/logo.png", width=220)
+    st.markdown("<h2 style='text-align:center;color:#0E2A47;'>RetailIQ</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center;color:#5C7A99;'>Where Data Meets Craft</p>", unsafe_allow_html=True)
     st.divider()
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
@@ -170,6 +234,9 @@ if st.session_state.user is None:
 
 else:
     user = st.session_state.user
+    st.sidebar.image("assets/logo.png", use_container_width=True)
+    st.sidebar.markdown("<p style='color:#2EC4DE;font-size:13px;'>Where Data Meets Craft</p>", unsafe_allow_html=True)
+    st.sidebar.divider()
     st.sidebar.title(f"Welcome, {user['full_name']}")
     st.sidebar.write(f"Role: {user['role'].title()}")
     st.sidebar.divider()
@@ -196,8 +263,10 @@ else:
         st.session_state.user = None
         st.rerun()
 
-    st.title(f"🛒 RetailIQ — {menu}")
-    st.divider()
+    st.markdown(f"""
+    <h2 style='color:#0E2A47;'>RetailIQ <span style='color:#2EC4DE;'>—</span> {menu}</h2>
+    <div style='height:3px;width:80px;background:linear-gradient(90deg,#0E2A47,#2EC4DE);margin-bottom:20px;'></div>
+    """, unsafe_allow_html=True)
 
     if menu == "POS - New Sale":
         if "cart" not in st.session_state:
@@ -258,7 +327,6 @@ else:
         sales = get_sales_data()
         df = pd.DataFrame(sales)
 
-        # ── Low Stock Alerts ─────────────────────────────────────────
         inventory = get_inventory_data()
         inv_df = pd.DataFrame(inventory)
         low_stock_items = inv_df[inv_df['status'] == 'Low Stock']
@@ -271,11 +339,10 @@ else:
                 )
             st.divider()
 
-        # ── Date Filter ──────────────────────────────────────────────
         col_f1, col_f2, col_f3 = st.columns([1, 1, 1])
         with col_f1:
             filter_mode = st.selectbox("Period", ["Today", "This Week", "This Month", "Custom Range", "All Time"])
-        
+
         today = datetime.now().date()
         if filter_mode == "Today":
             start_date = end_date = today
@@ -304,7 +371,6 @@ else:
         else:
             active_sales = df
 
-        # ── KPI Metrics ──────────────────────────────────────────────
         total_revenue = active_sales['total_amount'].sum() if not active_sales.empty else 0
         total_transactions = len(active_sales)
         avg_transaction = active_sales['total_amount'].mean() if total_transactions > 0 else 0
@@ -315,8 +381,6 @@ else:
         col3.metric("Avg Transaction", f"GHS {avg_transaction:,.2f}")
 
         st.divider()
-
-        # ── Daily Sales Summary ──────────────────────────────────────
         st.subheader("📅 Daily Sales Summary")
         if not active_sales.empty:
             daily = active_sales.groupby('sale_date')['total_amount'].agg(['sum', 'count']).reset_index()
@@ -638,7 +702,7 @@ else:
         with tab2:
             st.subheader("All Staff")
             staff = get_all_staff()
-            df = pd.DataFrame(staff)[['user_id', 'full_name', 'role', 'is_active', 'created_at']]
+            df = pd.DataFrame(staff)[['user_id', 'full_name','role', 'is_active', 'created_at']]
             st.dataframe(df, use_container_width=True)
             st.divider()
             st.subheader("Update Staff")
@@ -697,7 +761,6 @@ else:
         st.dataframe(exp_df, use_container_width=True)
         if not exp_df.empty:
             st.metric("Total Expenses", f"GHS {exp_df['amount'].sum():,.2f}")
-
             st.divider()
             st.subheader("📊 Expenses by Category")
             cat_summary = exp_df.groupby('category')['amount'].sum().reset_index()
