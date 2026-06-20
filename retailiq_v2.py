@@ -391,7 +391,7 @@ else:
 
         today_sales = today_data['total']
         today_txns = today_data['txns']
-        delta = today_sales - float(yest_total) if yest_total else None
+        delta = float(today_sales) - float(yest_total) if yest_total else None
 
         st.subheader(f"👋 Welcome back, {user['full_name']}")
         st.caption(f"Today is {today.strftime('%A, %d %B %Y')}")
